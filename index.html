@@ -1,0 +1,377 @@
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.0.0-beta.12/fabric.min.js"></script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+
+  <!-- jQuery library -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+  <!-- Latest compiled JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <style>
+    #drag-me {
+      display: inline-block;
+      width: 100px;
+      background-color: #DEE1DD;
+      height: 100px;
+    }
+    #reset {
+      position: absolute;
+      top: 15px; left: 87%;
+    }
+    #drag-stuff {
+      position: absolute;
+      top: 67px; left: 87%;
+    }
+    .canvas-container {
+      border: 1px dotted #ccc;
+      display: inline-block;
+      vertical-align: top;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="canvas-container" style="position: relative; user-select: none;">
+    <canvas id="canvas" style="border:1px solid #000000"></canvas>
+  </div>
+  <div id="reset">
+    <button type="button" class="btn btn-warning" onclick="resetData()">Reset to Default Data</button>
+  </div>
+
+  <div id="drag-stuff" class="log">
+    To "Add" drag me on the canvas<br><br>
+    <div class="drag-me" draggable="true" value="crane1" ondragstart="event.dataTransfer.setData('text/plain', '')">
+      <img draggable="true" src="img/1crane.png" width="100" height="100" value="1"></img>
+    </div>
+    <br>
+    <div class="drag-me" style="margin-top:10px" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '')">
+      <img draggable="true" src="img/2cranes.png" width="100" height="100" value="2"></img>
+    </div>
+    <div class="drag-me" style="margin-top:10px" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '')">
+      <img draggable="true" src="img/3cranes.png" width="100" height="100" value="3"></img>
+    </div>
+    <div class="drag-me" style="margin-top:10px" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '')">
+      <img draggable="true" src="img/4cranes.png" width="100" height="100" value="4"></img>
+    </div>
+    <img style="display: none;" src= "img/1crane.png" id="img-crane1" width="50" height="50" alt=""> 
+    <img style="display: none;" src= "img/2cranes.png" id="img-crane2" width="50" height="50" alt=""> 
+    <img style="display: none;" src= "img/3cranes.png" id="img-crane3" width="50" height="50" alt=""> 
+    <img style="display: none;" src= "img/4cranes.png" id="img-crane4" width="50" height="50" alt=""> 
+  </div>
+
+  <!--- modal -->
+  <div id="details" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Details</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="form-group">
+              <input type="hidden" id="details-key" name="internal-id">
+              <label for="details-id" class="col-form-label">ID:</label>
+              <input type="text" class="form-control" id="details-id">
+            </div>
+            <div class="form-group">
+              <label for="details-price" class="col-form-label">Prize:</label>
+              <input type="text" class="form-control" id="details-price">
+            </div>
+            <div class="form-group">
+              <label for="details-sales" class="col-form-label">Sales:</label>
+              <input type="text" class="form-control" id="details-sales">
+            </div>
+
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-warning" onclick="removeObject()">Delete this Box</button>
+          <button type="button" class="btn btn-primary" onclick="save()">Save</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // functions
+    function generateData (key, objParams) {
+      let objStr = objParams
+      if (!objStr) {
+        objStr = {
+          id: `L${key}`,
+          price: 'nitotan demon',
+          // slayer:'rubber',
+          sales: Math.ceil(Math.random() * ( 10000 - 3000) + 3000),
+        };
+      }
+
+      const str = [
+        objStr.id,
+        `Prize: \n    ${objStr.price}`,
+        // `Slayer: \n    ${objStr.slayer}`,
+        `Sales: \n    ${objStr.sales}`,
+      ].join('\n');
+      return {objStr, str};
+    }
+
+    // SAVE on EDIT
+    function save () {
+      const key = $('#details-key').val();
+      const id = $('#details-id').val();
+      const price = $('#details-price').val();
+      // const slayer = $('#details-slayer').val();
+      const sales = $('#details-sales').val();
+
+      const activeObj = canvas.getActiveObject();
+  
+      const {objStr, str} = generateData(key, {id, price, sales})
+
+      activeObj._objects[1].set('text', str);
+      rectTextConfigs[key].data = objStr;
+
+      canvas.renderAll();
+      $('#details').modal('hide');
+    }
+
+    // function DELETE - when box is to be deleted
+    function  removeObject() {
+      const activeObject = canvas.getActiveObject();
+      canvas.remove(activeObject);
+      $('#details').modal('hide');
+      delete rectTextConfigs[activeObject._xid];
+    }
+    function drawCanvas(rectTextConfigs, preserve) {
+      Object.keys(rectTextConfigs).forEach(key => {
+        const config = rectTextConfigs[key];
+        const {objStr, str} = generateData(key);
+
+
+        const craneNum = parseInt(config.cranes.length);
+        const image = document.getElementById('img-crane' + craneNum);
+
+        const imgSetting = {
+          left:3, top:3, hasControls: false, selection: false, hasRotatingPoint: false,
+          scaleX: 0.04, scaleY: 0.04,
+        }
+
+        const grpArr = [];
+        let left = 0;
+ 
+        for (var x = 0; x < config.cranes.length; ++x) {
+          const obj = config.cranes[x];
+          const rect = new fabric.Rect(Object.assign({}, obj.rect, {left}));
+          const img = new fabric.Image(image, Object.assign({}, imgSetting, {left:left+3}));
+          const grp = new fabric.Group([ rect, img ], Object.assign(obj.group, {left, width: 50}))
+          grpArr.push(grp);
+          left += 50;
+        }
+
+        const group =  new fabric.Group(grpArr, Object.assign(config.group, {}));
+        group._xid = key;
+        canvas.add(group)
+      });
+    }
+
+    // function reset to default data 
+    function resetData() {
+      canvas.remove(...canvas.getObjects());
+      drawCanvas(JSON.parse(window.sessionStorage.getItem('defaultData_v2')));
+      sessionStorage.setItem('currentData_v2', JSON.stringify(defRectTextConfigs));
+      // reset data storage also
+      rectTextConfigs = JSON.parse(JSON.stringify(defRectTextConfigs))
+    }
+
+
+  </script>
+  <script>
+    const canvas = new fabric.Canvas('canvas');
+
+    const fill = '#DEE1DD';
+    const stroke = '#314570';
+    const opacity = '314570';
+    const width = 50;
+    const height = 50;
+    
+    const fontFamily =  'Courier New';
+    const fontSize = 11;
+    
+    // pre loaded data
+    const textConfig = {
+      // fontFamily: 'Courier New',
+      fontSize,
+      originX: 'left',
+      textAlign: 'left',
+      left: 2
+      // width,height,
+    };
+    const defRectTextConfigs = {
+      '0': { group:{width, height, left:10, top:10}, 
+      cranes: [{ 
+        data: {id: 'L0', price: 'nitotan demon', slayer:'rubber', sales: 5000},
+        group:{width, height},  rect: {width, height, fill, opacity, stroke}
+      }]},
+      '1': { group:{width, height, left:10, top:60}, 
+      cranes: [{ 
+        data: {id: 'L1', price: 'nitotan demon', slayer:'rubber', sales: 6000},
+        group:{width, height, left:10, top:60}, rect: {width, height, fill, opacity, stroke}
+      }]},
+      '2': { group:{width, height, left:60, top:10}, 
+      cranes: [{ 
+        data: {id: 'L2', price: 'nitotan demon', slayer:'rubber', sales: 7000},
+        group:{width, height, left:60, top:10}, text: textConfig, rect: {width, height, fill, opacity, stroke}
+      }]},
+      '3': { group:{width, height, left:60, top:60}, 
+      cranes: [{ 
+        data: {id: 'L4', price: 'nitotan demon', slayer:'rubber', sales: 1900},
+        group:{width, height, left:60, top:60}, text: textConfig, rect: {width, height, fill, opacity, stroke}
+      }]}
+    };
+
+    // set default data if not set
+    // if (!sessionStorage.getItem('defaultData_v2')) sessionStorage.setItem('defaultData_v2', JSON.stringify(defRectTextConfigs));
+    sessionStorage.setItem('defaultData_v2', JSON.stringify(defRectTextConfigs));
+
+    // get current Data
+    let currentData = sessionStorage.getItem('currentData_v2');
+    if (!currentData || currentData === '' || currentData === '{}') currentData = sessionStorage.getItem('defaultData_v2');
+    // currentData = sessionStorage.getItem('defaultData_v2');
+
+
+    let rectTextConfigs = JSON.parse(currentData);
+    drawCanvas(rectTextConfigs);
+    // create rectangles and position - pre loaded data    
+
+    canvas.selectionColor = 'rgba(0,255,0,0.3)';
+    canvas.selectionBorderColor = 'red';
+    canvas.selectionLineWidth = 5;
+
+    canvas.setHeight(window.innerHeight * 0.90);
+    canvas.setWidth(window.innerWidth * 0.85);
+    canvas.renderAll();
+    // Event Listener: Add ( Drag and drop)
+    let craneType;
+    document
+    .getElementById('drag-stuff')
+    .addEventListener('dragstart', function (e) {
+        if (e) {
+          craneType = e.target.getAttribute('value');
+          console.log('crane type', craneType)
+        }
+      });
+
+      // var con = stage.container();
+      // con.addEventListener('dragover', function (e) {
+      //   e.preventDefault(); // !important
+      // });
+
+    canvasContainer = document.getElementById('canvas-container')
+    .addEventListener('drop', (e) => {
+      if (e) {
+
+        e.preventDefault();
+        const id = Object.keys(rectTextConfigs).length;
+        const {objStr, str} = generateData(id);
+
+        const config = { group:{width, height, left:10, top:10}, 
+        cranes: 
+        [{ 
+          data: {id: `L${id}`, price: 'nitotan demon', slayer:'rubber', sales: 5000},
+          group:{width, height},  rect: {width, height, fill, opacity, stroke}
+        }]};
+
+        const craneNum = parseInt(craneType);
+        const image = document.getElementById('img-crane' + craneNum);
+
+        const imgSetting = {
+          left:3, top:3, hasControls: false, selection: false, hasRotatingPoint: false,
+          scaleX: 0.04, scaleY: 0.04,
+        }
+
+        const grpArr = [];
+        let left = 0;
+        for (var x = 0; x < craneType; ++x) {
+          const rectConfig = Object.assign({}, config.cranes[0].rect, {left});
+          const rect = new fabric.Rect(rectConfig);
+
+          const imgConfig = Object.assign({}, imgSetting, {left:left+3});
+          const img = new fabric.Image(image, imgConfig);
+
+          const grpConfig = Object.assign(config.cranes[0].group, {left, width: 50});
+          const grp = new fabric.Group([ rect, img ], grpConfig )
+          config.cranes[x] = {
+            data: {id: `L${id}_${x}`, price: 'nitotan demon', slayer:'rubber', sales: Math.ceil(Math.random() * ( 10000 - 3000) + 3000)},
+            group: grpConfig, rect: rectConfig, img: imgConfig
+          };
+          grpArr.push(grp);
+          left += 50;
+        }
+
+        const groupConfig = Object.assign(config.group, {
+          top: e.layerY, left: e.layerX, width: left,
+        });
+
+        config.group = groupConfig
+        const group =  new fabric.Group(grpArr, groupConfig);
+        group._xid = id;
+
+        canvas.add(group);
+        rectTextConfigs[id] = config;
+
+        console.log( rectTextConfigs)
+      }
+    }, false);
+
+    // Event Listner: Click
+  canvas.on('mouse:dblclick', (e) => {
+    if (e.target){
+      const id = e.target._xid;
+      const data = rectTextConfigs[id].cranes[0].data;
+      console.log( data );
+
+      $('#details-key').val(id);
+      $('#details-id').val(data.id);
+      $('#details-price').val(data.price);
+      // $('#details-slayer').val(data.slayer);
+      $('#details-sales').val(data.sales);
+
+      $('#details').modal('show');
+    }
+  })
+
+  let isObjectMoving = false;
+  canvas.on('object:moving', function (event) {
+    isObjectMoving = true;
+  });
+
+  canvas.on('mouse:up', function (e) {
+  if (isObjectMoving){
+    isObjectMoving = false;
+    if (e.target){
+      const id = e.target._xid;
+
+      const data = rectTextConfigs[id];
+      data.group.left =  e.target.left;
+      data.group.top = e.target.top;
+    }
+  } 
+});
+  // before closing browser or refresh
+  window.onbeforeunload = () => {
+    sessionStorage.setItem('currentData_v2', JSON.stringify(rectTextConfigs));
+  };
+/*
+Todo: 
+1. grouping
+2. snapping
+3. saving the current layout
+4. 
+*/
+  </script>
+</body>
+</html>

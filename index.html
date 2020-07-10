@@ -283,18 +283,20 @@
       fill: '#ADEFD1FF',
       fontFamily: 'Inconsolata'
   });
-  var groupTooltip = new fabric.Group([ rect, text ], {
-      left: 0,
-      top: 0,
-      selectable : false,
-      visible: false,
-  });
 
-  canvas.add(groupTooltip);
-  canvas.renderAll();
+  let groupTooltip;
 
   canvas.on('mouse:over', function(e) {
     if (e.target) {
+
+      groupTooltip = new fabric.Group([ rect, text ], {
+        left: 0,
+        top: 0,
+        selectable : false,
+        visible: false,
+      });
+
+
       var p = canvas.getPointer(e.e);
       groupTooltip.set({ left: p.x, top: p.y, visible: true});
       const id = e.target._xid;
@@ -303,14 +305,16 @@
       let {objStr, str} = generateData( id, data );
       str = 'Details:  \n' + str;
       groupTooltip._objects[1].set('text', str);
-      canvas.renderAll();
+      canvas.add(groupTooltip);
 
     }
   });
 
+
   canvas.on('mouse:out', function(e) {
-    groupTooltip.set({visible: false})
-    canvas.renderAll();
+    if (groupTooltip) {
+      canvas.remove(groupTooltip);
+    }
   });
   canvasContainer = document.getElementById('canvas-container')
   .addEventListener('drop', (e) => {
